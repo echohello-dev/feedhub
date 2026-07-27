@@ -1,0 +1,23 @@
+[
+  {
+    "name": "OpenRouter - New Models",
+    "url": "https://openrouter.ai/api/v1/models?use_rss=true",
+    "webhook_secret": "DISCORD_WEBHOOK_OPENROUTER",
+    "username": "OpenRouter",
+    "avatar_url": "https://openrouter.ai/favicon.ico",
+    "color": 6143855,
+    "enabled": true,
+    "max_items": 50,
+    "history_cap": 5000,
+    "description_limit": 350
+  },
+  {
+    "name": "GitHub Releases - some/repo",
+    "url": "https://github.com/owner/repo/releases.atom",
+    "webhook_secret": "DISCORD_WEBHOOK_RELEASES",
+    "username": "GitHub",
+    "avatar_url": "https://github.githubassets.com/favicons/favicon.svg",
+    "color": 4210752,
+    "enabled": true
+  }
+]

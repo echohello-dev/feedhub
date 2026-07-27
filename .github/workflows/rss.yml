@@ -1,0 +1,59 @@
+name: feedhub - RSS to Discord
+
+on:
+  workflow_call:
+    inputs:
+      feeds-path:
+        type: string
+        default: "feeds.json"
+        description: "Path to the consumer repo's feeds.json (relative to repo root)"
+      state-path:
+        type: string
+        default: "state.json"
+        description: "Path to the consumer repo's state.json (relative to repo root)"
+    secrets:
+      discord-webhook:
+        required: false
+        description: "Default Discord webhook URL when a feed entry doesn't specify its own"
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout consumer repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout feedhub into ./vendor/feedhub
+        uses: actions/checkout@v4
+        with:
+          repository: echohello-dev/feedhub
+          path: vendor/feedhub
+          # Pin to a SHA in production. @main is convenient for tinkering.
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: vendor/feedhub/src/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r vendor/feedhub/src/requirements.txt
+
+      - name: Poll feeds and post new items
+        env:
+          DISCORD_WEBHOOK_DEFAULT: ${{ secrets.discord-webhook }}
+        run: python vendor/feedhub/src/rss.py "${{ inputs.feeds-path }}" "${{ inputs.state-path }}"
+
+      - name: Commit updated state
+        run: |
+          git config user.name "feedhub-bot"
+          git config user.email "feedhub-bot@users.noreply.github.com"
+          git add "${{ inputs.state-path }}"
+          git diff --cached --quiet || git commit -m "chore(feedhub): update RSS state"
+          git push
