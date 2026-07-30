@@ -78,6 +78,15 @@ def post(webhook: str, entry: Any, feed_cfg: dict[str, Any]) -> None:
     if len(desc) > limit:
         desc = desc[:limit].rsplit(" ", 1)[0] + "…"
 
+    # Discord requires ISO8601 timestamps; RSS pubDates are RFC822.
+    # feedparser's *_parsed fields give us a struct_time to convert.
+    timestamp = None
+    parsed_ts = entry.get("published_parsed") or entry.get("updated_parsed")
+    if parsed_ts:
+        timestamp = datetime.datetime(
+            *parsed_ts[:6], tzinfo=datetime.timezone.utc
+        ).isoformat()
+
     payload = {
         "username": feed_cfg.get("username", "RSS Bot"),
         "embeds": [
@@ -87,7 +96,7 @@ def post(webhook: str, entry: Any, feed_cfg: dict[str, Any]) -> None:
                 "description": desc[:4096] or None,
                 "color": feed_cfg.get("color", 0x6B7280),
                 "footer": {"text": feed_cfg["name"][:2048]},
-                "timestamp": entry.get("published") or None,
+                "timestamp": timestamp,
             }
         ],
     }
