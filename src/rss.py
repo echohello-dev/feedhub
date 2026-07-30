@@ -22,8 +22,10 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import sys
 import time
+from html.parser import HTMLParser
 from typing import Any
 
 import feedparser
@@ -32,6 +34,70 @@ import requests
 
 def seed_only() -> bool:
     return os.environ.get("FEEDHUB_SEED_ONLY", "").lower() in ("1", "true", "yes")
+
+
+class DiscordHTMLConverter(HTMLParser):
+    """Convert simple RSS/HTML markup into Discord-flavored markdown.
+
+    Discord embeds render markdown links and formatting, but not raw HTML.
+    Feeds like OpenRouter's embed <a href> tags in descriptions, which would
+    otherwise appear as literal text. Handles the common inline tags and
+    strips anything else. Uses only stdlib html.parser.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._link_href: str | None = None
+        self._link_text: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "a":
+            self._link_href = dict(attrs).get("href") or ""
+            self._link_text = []
+        elif tag in ("b", "strong"):
+            self.parts.append("**")
+        elif tag in ("i", "em"):
+            self.parts.append("*")
+        elif tag == "code":
+            self.parts.append("`")
+        elif tag == "br":
+            self.parts.append("\n")
+        elif tag in ("p", "div", "li", "tr", "h1", "h2", "h3", "h4"):
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "a":
+            text = "".join(self._link_text).strip()
+            href = self._link_href or ""
+            self.parts.append(f"[{text}]({href})" if href and text and href != text else (text or href))
+            self._link_href = None
+            self._link_text = []
+        elif tag in ("b", "strong"):
+            self.parts.append("**")
+        elif tag in ("i", "em"):
+            self.parts.append("*")
+        elif tag == "code":
+            self.parts.append("`")
+        elif tag in ("p", "div", "li", "tr", "h1", "h2", "h3", "h4"):
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if self._link_href is not None:
+            self._link_text.append(data)
+        else:
+            self.parts.append(data)
+
+
+def html_to_discord(text: str) -> str:
+    converter = DiscordHTMLConverter()
+    converter.feed(text)
+    converter.close()
+    out = "".join(converter.parts)
+    # Tidy up: collapse runs of blank lines, trim trailing whitespace per line.
+    out = re.sub(r"[ \t]+\n", "\n", out)
+    out = re.sub(r"\n{3,}", "\n\n", out)
+    return out.strip()
 
 
 def load_state(path: str) -> dict[str, Any]:
@@ -75,7 +141,9 @@ def post(webhook: str, entry: Any, feed_cfg: dict[str, Any]) -> None:
     title = entry.get("title", "Untitled")
     link = entry.get("link", "")
     desc = (entry.get("description") or entry.get("summary") or "").strip()
-    limit = feed_cfg.get("description_limit", 350)
+    if feed_cfg.get("parse_html", True) and "<" in desc:
+        desc = html_to_discord(desc)
+    limit = feed_cfg.get("description_limit", 1024)
     if len(desc) > limit:
         desc = desc[:limit].rsplit(" ", 1)[0] + "…"
 
