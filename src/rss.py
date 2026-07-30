@@ -23,6 +23,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 from typing import Any
 
 import feedparser
@@ -147,6 +148,7 @@ def main(feeds_path: str, state_path: str) -> int:
         feed_seen = seen.setdefault(name, set())
         new = 0
         max_items = feed_cfg.get("max_items", 50)
+        post_delay = feed_cfg.get("post_delay_seconds", 0)
         for entry in parsed.entries[:max_items]:
             gid = guid(entry)
             if gid in feed_seen:
@@ -165,6 +167,8 @@ def main(feeds_path: str, state_path: str) -> int:
                     continue
             feed_seen.add(gid)
             new += 1
+            if post_delay and not seeding:
+                time.sleep(post_delay)
 
         cap = feed_cfg.get("history_cap", 5000)
         state.setdefault("seen", {})[name] = sorted(feed_seen)[-cap:]

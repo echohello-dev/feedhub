@@ -63,11 +63,14 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
   "enabled": true,                              // optional, default true
   "max_items": 50,                              // optional, items per poll
   "history_cap": 5000,                          // optional, GUIDs retained
-  "description_limit": 350                      // optional, embed desc char cap
+  "description_limit": 350,                     // optional, embed desc char cap
+  "post_delay_seconds": 2                       // optional, sleep between posts (rate-limit safety)
 }
 ```
 
 `webhook_secret` overrides the workflow-level `secrets.discord-webhook` if set, which lets one consumer repo post to multiple Discord channels with different webhooks.
+
+Discord webhooks rate-limit at roughly 30 messages per minute per webhook. If you replay a backlog or a feed occasionally bursts, set `post_delay_seconds` — at 2s the worker stays well under the limit. Failed posts are not marked seen, so 429s self-heal on the next run either way, just messier.
 
 ## First-run flood
 
