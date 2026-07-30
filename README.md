@@ -73,14 +73,19 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
 
 When the worker first runs against a feed, every item in the feed's `max_items` window is "new". On a busy feed like OpenRouter that's ~338 items.
 
-To suppress the flood on first run:
+Seed the state before enabling posts:
 
-1. Add the workflow to your consumer repo.
-2. Trigger it once with `webhook_secret` set to a dummy name (or no secret set). Items get marked as seen in `state.json`, nothing gets posted.
-3. Set the real `DISCORD_WEBHOOK_*` secret.
-4. Trigger again. Only new items from this point forward get posted.
+```bash
+# In your consumer repo, with feedhub checked out alongside:
+pip install -r ../feedhub/src/requirements.txt
+FEEDHUB_SEED_ONLY=true python ../feedhub/src/rss.py feeds.json state.json
+git commit -am "chore: seed feed state"
+git push
+```
 
-Alternatively, the simpler path: set the real webhook secret before the first run and let it spam your channel once. Delete the messages, move on.
+`FEEDHUB_SEED_ONLY` marks every current item as seen without posting. From the next run on, only genuinely new items hit your channel.
+
+The same env var works inside the reusable workflow — set it as a job `env` in your caller workflow if you'd rather seed in CI than locally.
 
 ## Inputs the reusable workflow accepts
 
