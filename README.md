@@ -63,7 +63,8 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
   "enabled": true,                              // optional, default true
   "max_items": 50,                              // optional, items per poll
   "history_cap": 5000,                          // optional, GUIDs retained
-  "description_limit": 350,                     // optional, embed desc char cap
+  "description_limit": 1024,                    // optional, embed desc char cap (Discord max 4096)
+  "parse_html": true,                           // optional, convert <a>/<b>/<code> etc. to Discord markdown
   "post_delay_seconds": 2                       // optional, sleep between posts (rate-limit safety)
 }
 ```
