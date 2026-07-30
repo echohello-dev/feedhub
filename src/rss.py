@@ -11,6 +11,10 @@ Environment:
     DISCORD_WEBHOOK_DEFAULT  Optional fallback webhook URL when a feed entry
                              doesn't specify its own. Usually injected from
                              secrets.discord-webhook in the workflow.
+    FEEDHUB_SEED_ONLY        When set to a truthy value (1/true/yes), skip
+                             posting entirely and only mark feed items as seen.
+                             Use for first-run seeding to avoid flooding
+                             Discord with the feed's existing backlog.
 """
 from __future__ import annotations
 
@@ -23,6 +27,10 @@ from typing import Any
 
 import feedparser
 import requests
+
+
+def seed_only() -> bool:
+    return os.environ.get("FEEDHUB_SEED_ONLY", "").lower() in ("1", "true", "yes")
 
 
 def load_state(path: str) -> dict[str, Any]:
@@ -101,6 +109,9 @@ def main(feeds_path: str, state_path: str) -> int:
         name: set(ids) for name, ids in state.get("seen", {}).items()
     }
     default_webhook = os.environ.get("DISCORD_WEBHOOK_DEFAULT", "")
+    seeding = seed_only()
+    if seeding:
+        print("FEEDHUB_SEED_ONLY set: marking items seen without posting")
     total_new = 0
 
     for feed_cfg in feeds:
@@ -108,11 +119,13 @@ def main(feeds_path: str, state_path: str) -> int:
         if not feed_cfg.get("enabled", True):
             print(f"[{name}] disabled, skipping")
             continue
-        try:
-            webhook = webhook_for(feed_cfg, default_webhook)
-        except RuntimeError as e:
-            print(f"[{name}] {e}", file=sys.stderr)
-            continue
+        webhook = ""
+        if not seeding:
+            try:
+                webhook = webhook_for(feed_cfg, default_webhook)
+            except RuntimeError as e:
+                print(f"[{name}] {e}", file=sys.stderr)
+                continue
 
         parsed = feedparser.parse(feed_cfg["url"])
         if parsed.bozo and not parsed.entries:
@@ -129,28 +142,31 @@ def main(feeds_path: str, state_path: str) -> int:
             gid = guid(entry)
             if gid in feed_seen:
                 continue
-            try:
-                post(webhook, entry, feed_cfg)
-            except requests.HTTPError as e:
-                print(
-                    f"[{name}] post failed for {gid}: HTTP {e.response.status_code}",
-                    file=sys.stderr,
-                )
-                continue
-            except requests.RequestException as e:
-                print(f"[{name}] post failed for {gid}: {e}", file=sys.stderr)
-                continue
+            if not seeding:
+                try:
+                    post(webhook, entry, feed_cfg)
+                except requests.HTTPError as e:
+                    print(
+                        f"[{name}] post failed for {gid}: HTTP {e.response.status_code}",
+                        file=sys.stderr,
+                    )
+                    continue
+                except requests.RequestException as e:
+                    print(f"[{name}] post failed for {gid}: {e}", file=sys.stderr)
+                    continue
             feed_seen.add(gid)
             new += 1
 
         cap = feed_cfg.get("history_cap", 5000)
         state.setdefault("seen", {})[name] = sorted(feed_seen)[-cap:]
-        print(f"[{name}] {new} new / {len(parsed.entries)} total")
+        verb = "seeded" if seeding else "new"
+        print(f"[{name}] {new} {verb} / {len(parsed.entries)} total")
         total_new += new
 
     state["last_run"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     save_state(state_path, state)
-    print(f"Posted {total_new} new items total")
+    verb = "Seeded" if seeding else "Posted"
+    print(f"{verb} {total_new} items total")
     return 0
 
 
