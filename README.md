@@ -65,13 +65,29 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
   "history_cap": 5000,                          // optional, GUIDs retained
   "description_limit": 1024,                    // optional, embed desc char cap (Discord max 4096)
   "parse_html": true,                           // optional, convert <a>/<b>/<code> etc. to Discord markdown
-  "post_delay_seconds": 2                       // optional, sleep between posts (rate-limit safety)
+  "post_delay_seconds": 2,                      // optional, sleep between posts (rate-limit safety)
+
+  // Rich formatting (all optional)
+  "author_name": "OpenRouter",                  // embed author block: name
+  "author_url": "https://openrouter.ai/models", //   ... clickable link
+  "author_icon_url": "https://...icon",         //   ... small icon left of the name
+  "footer_icon_url": "https://...icon",         // icon next to the footer text
+  "thumbnail_url": "https://...logo",           // static thumbnail (fallback when entry has no media)
+  "thumbnail_from_entry": true,                 // optional, default true: auto-extract media:thumbnail /
+                                                //   media:content / image enclosure / first <img>
+  "fields": ["author", "published", "tags"],    // entry keys rendered as inline fields
+  "content": "New model just landed:",          // message text above the embed (2000 char cap, markdown ok)
+  "allow_role_pings": false                     // optional, default false: let <@&role_id> in content actually ping
 }
 ```
 
 `webhook_secret` overrides the workflow-level `secrets.discord-webhook` if set, which lets one consumer repo post to multiple Discord channels with different webhooks.
 
 Discord webhooks rate-limit at roughly 30 messages per minute per webhook. If you replay a backlog or a feed occasionally bursts, set `post_delay_seconds` — at 2s the worker stays well under the limit. Failed posts are not marked seen, so 429s self-heal on the next run either way, just messier.
+
+Mentions are suppressed by default (`allowed_mentions: {"parse": []}`), so a `<@&123456>` in `content` renders inertly. Set `allow_role_pings: true` on a feed to let role mentions in its `content` actually ping. User and everyone/here pings are never enabled.
+
+Note on thumbnails: per-entry media always wins over `thumbnail_url` — the static URL is the fallback for media-less feeds.
 
 ## First-run flood
 
