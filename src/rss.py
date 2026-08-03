@@ -100,6 +100,67 @@ def html_to_discord(text: str) -> str:
     return out.strip()
 
 
+def entry_thumbnail(entry: Any, feed_cfg: dict[str, Any]) -> str | None:
+    """Resolve a thumbnail for the embed.
+
+    Extraction order: media:thumbnail -> media:content image -> image
+    enclosure -> first <img> in the description -> per-feed static fallback.
+    """
+    if feed_cfg.get("thumbnail_from_entry", True):
+        thumbs = entry.get("media_thumbnail")
+        if isinstance(thumbs, list) and thumbs and thumbs[0].get("url"):
+            return thumbs[0]["url"]
+        for mc in entry.get("media_content") or []:
+            mtype = mc.get("type", "")
+            if mc.get("url") and (mc.get("medium") == "image" or mtype.startswith("image/")):
+                return mc["url"]
+        for enc in entry.get("enclosures") or []:
+            if enc.get("type", "").startswith("image/") and enc.get("href"):
+                return enc["href"]
+        html_text = (entry.get("description") or entry.get("summary") or "")
+        match = re.search(r'<img[^>]+src=["\']([^"\']+)', html_text)
+        if match:
+            return match.group(1)
+    return feed_cfg.get("thumbnail_url")
+
+
+FIELD_LABELS = {
+    "author": "Author",
+    "tags": "Tags",
+    "published": "Published",
+    "link": "Link",
+}
+
+
+def entry_fields(entry: Any, feed_cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    """Render configured entry keys as inline embed fields."""
+    fields: list[dict[str, Any]] = []
+    for key in feed_cfg.get("fields", []):
+        value: str | None
+        if key == "author":
+            value = entry.get("author") or (entry.get("author_detail") or {}).get("name")
+        elif key == "tags":
+            terms = [t.get("term", "") for t in entry.get("tags") or []]
+            value = ", ".join(t for t in terms if t) or None
+        elif key == "published":
+            ts = entry.get("published_parsed")
+            value = (
+                f"{ts.tm_year:04d}-{ts.tm_mon:02d}-{ts.tm_mday:02d}" if ts else None
+            )
+        else:
+            raw = entry.get(key)
+            value = str(raw) if raw else None
+        if value:
+            fields.append(
+                {
+                    "name": FIELD_LABELS.get(key, key.replace("_", " ").title())[:256],
+                    "value": value[:1024],
+                    "inline": True,
+                }
+            )
+    return fields[:25]
+
+
 def load_state(path: str) -> dict[str, Any]:
     if not os.path.exists(path):
         return {"seen": {}, "last_run": None}
@@ -156,7 +217,7 @@ def post(webhook: str, entry: Any, feed_cfg: dict[str, Any]) -> None:
             *parsed_ts[:6], tzinfo=datetime.timezone.utc
         ).isoformat()
 
-    payload = {
+    payload: dict[str, Any] = {
         "username": feed_cfg.get("username", "RSS Bot"),
         "embeds": [
             {
@@ -169,6 +230,35 @@ def post(webhook: str, entry: Any, feed_cfg: dict[str, Any]) -> None:
             }
         ],
     }
+
+    footer_icon = feed_cfg.get("footer_icon_url")
+    if footer_icon:
+        payload["embeds"][0]["footer"]["icon_url"] = footer_icon
+
+    if feed_cfg.get("author_name"):
+        author: dict[str, Any] = {"name": feed_cfg["author_name"][:256]}
+        if feed_cfg.get("author_url"):
+            author["url"] = feed_cfg["author_url"]
+        if feed_cfg.get("author_icon_url"):
+            author["icon_url"] = feed_cfg["author_icon_url"]
+        payload["embeds"][0]["author"] = author
+
+    thumbnail = entry_thumbnail(entry, feed_cfg)
+    if thumbnail:
+        payload["embeds"][0]["thumbnail"] = {"url": thumbnail}
+
+    fields = entry_fields(entry, feed_cfg)
+    if fields:
+        payload["embeds"][0]["fields"] = fields
+
+    content = feed_cfg.get("content")
+    if content:
+        payload["content"] = content[:2000]
+    # Safe default: suppress all pings. Feeds must opt into role pings.
+    payload["allowed_mentions"] = (
+        {"parse": ["roles"]} if feed_cfg.get("allow_role_pings") else {"parse": []}
+    )
+
     avatar = feed_cfg.get("avatar_url")
     if avatar:
         payload["avatar_url"] = avatar
