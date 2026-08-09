@@ -78,6 +78,9 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
   "description_limit": 1024,                    // optional, embed desc char cap (Discord max 4096)
   "parse_html": true,                           // optional, convert <a>/<b>/<code> etc. to Discord markdown
   "post_delay_seconds": 2,                      // optional, sleep between posts (rate-limit safety)
+  "oldest_first": false,                        // optional, default false: sort entries by published_parsed
+                                                //   ascending before posting (use for backfill/replay); entries
+                                                //   without a parseable date sort to the end
 
   // Rich formatting (all optional)
   "author_name": "OpenRouter",                  // embed author block: name

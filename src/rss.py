@@ -307,7 +307,13 @@ def main(feeds_path: str, state_path: str) -> int:
         new = 0
         max_items = feed_cfg.get("max_items", 50)
         post_delay = feed_cfg.get("post_delay_seconds", 0)
-        for entry in parsed.entries[:max_items]:
+        entries = parsed.entries[:max_items]
+        if feed_cfg.get("oldest_first"):
+            def _sort_key(e):
+                ts = e.get("published_parsed") or e.get("updated_parsed")
+                return time.mktime(ts) if ts else float("inf")
+            entries = sorted(entries, key=_sort_key)
+        for entry in entries:
             gid = guid(entry)
             if gid in feed_seen:
                 continue
