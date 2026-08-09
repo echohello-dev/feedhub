@@ -15,6 +15,7 @@
     "author_icon_url": "https://openrouter.ai/favicon.ico",
     "footer_icon_url": "https://openrouter.ai/favicon.ico",
     "fields": ["published"]
+    // "oldest_first": true — uncomment to replay/backfill a feed oldest-first
   },
   {
     "name": "GitHub Releases - some/repo",
