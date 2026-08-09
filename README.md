@@ -35,6 +35,18 @@ jobs:
 
 Drop a `feeds.json` next to it (see [`examples/feeds.example.json`](examples/feeds.example.json)), set the `DISCORD_WEBHOOK` repo secret, push, done.
 
+For multiple webhooks, add one `secrets:` line per extra feed and one matching declaration to the reusable workflow's `workflow_call.secrets:` block:
+
+```yaml
+# your-feeds/.github/workflows/rss.yml
+    secrets:
+      discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
+      DISCORD_WEBHOOK_FEED_A: ${{ secrets.DISCORD_WEBHOOK_FEED_A }}
+      DISCORD_WEBHOOK_FEED_B: ${{ secrets.DISCORD_WEBHOOK_FEED_B }}
+```
+
+`feeds.json` then uses `"webhook_secret": "DISCORD_WEBHOOK_FEED_A"` and the per-feed URL is read from the matching env var. The reusable workflow must list each `DISCORD_WEBHOOK_*` secret it accepts — the secret name mirrors the env var name so no renaming is needed when you add a new feed.
+
 ## Why a template
 
 The git-as-infra pattern ([Upptime](https://github.com/upptime/upptime), [stargazers-action](https://github.com/oddship/stargazers-action)) substitutes four GitHub primitives for a server:
@@ -117,6 +129,7 @@ The same env var works inside the reusable workflow — set it as a job `env` in
 | Secret | Description |
 |---|---|
 | `discord-webhook` | Fallback Discord webhook URL when a feed entry doesn't specify its own |
+| `DISCORD_WEBHOOK_<NAME>` | Per-feed webhook secret for feeds whose `webhook_secret` is `DISCORD_WEBHOOK_<NAME>`. Exposed as an env var of the same name. Add a matching `secrets:` entry to your caller workflow for each extra webhook you need. |
 
 ## Pin to a SHA in production
 

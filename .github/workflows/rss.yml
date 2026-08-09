@@ -15,6 +15,12 @@ on:
       discord-webhook:
         required: false
         description: "Default Discord webhook URL when a feed entry doesn't specify its own"
+      DISCORD_WEBHOOK_OPENROUTER:
+        required: false
+        description: "Webhook URL for feeds whose webhook_secret is DISCORD_WEBHOOK_OPENROUTER"
+      DISCORD_WEBHOOK_MCP:
+        required: false
+        description: "Webhook URL for feeds whose webhook_secret is DISCORD_WEBHOOK_MCP"
 
 jobs:
   poll:
@@ -46,6 +52,8 @@ jobs:
       - name: Poll feeds and post new items
         env:
           DISCORD_WEBHOOK_DEFAULT: ${{ secrets.discord-webhook }}
+          DISCORD_WEBHOOK_OPENROUTER: ${{ secrets.DISCORD_WEBHOOK_OPENROUTER }}
+          DISCORD_WEBHOOK_MCP: ${{ secrets.DISCORD_WEBHOOK_MCP }}
         run: python vendor/feedhub/src/rss.py "${{ inputs.feeds-path }}" "${{ inputs.state-path }}"
 
       - name: Commit updated state
