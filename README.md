@@ -113,7 +113,7 @@ Seed the state before enabling posts:
 
 ```bash
 # From this repo, pointing at the consumer:
-mise run seed -- ../feeds/feeds.json ../feeds/state.json
+FEEDHUB_FEEDS=../feeds/feeds.json FEEDHUB_STATE=../feeds/state.json mise run seed
 # Or from the consumer, if it has a mise.toml wrapper:
 mise run seed
 ```
@@ -136,8 +136,12 @@ Webhook URLs are not action inputs. Set them as job `env` vars so adding a feed 
 
 | Env var | Description |
 |---|---|
+| `FEEDHUB_FEEDS` | Path to feeds.json (default `feeds.json`) |
+| `FEEDHUB_STATE` | Path to state.json (default `state.json`) |
+| `FEEDHUB_REPO` | Repo to commit state into (default `.`) |
+| `FEEDHUB_SEED_ONLY` | `true` to mark items seen without posting |
 | `DISCORD_WEBHOOK_DEFAULT` | Fallback webhook URL when a feed entry doesn't specify its own |
-| `<webhook_secret>` | Per-feed webhook URL. Name must match `webhook_secret` in `feeds.json`. |
+| `<webhook_secret>` | Per-feed webhook URL. Name must match `webhook_secret` in `feeds.json`. Never logged. |
 
 ## Pin to a SHA in production
 

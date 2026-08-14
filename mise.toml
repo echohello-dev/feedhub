@@ -14,19 +14,21 @@ run = "uv pip install --system -r src/requirements.txt"
 [tasks.poll]
 description = "Poll feeds and post new items"
 depends = ["deps"]
-run = 'python src/rss.py "${1:-feeds.json}" "${2:-state.json}"'
+run = "python src/rss.py"
 
 [tasks.seed]
 description = "Mark current items seen without posting"
 depends = ["deps"]
-env = { FEEDHUB_SEED_ONLY = "true" }
-run = 'python src/rss.py "${1:-feeds.json}" "${2:-state.json}"'
+run = '''
+export FEEDHUB_SEED_ONLY=true
+python src/rss.py
+'''
 
 [tasks.commit-state]
 description = "Commit and push state.json if it changed"
 run = '''
-repo="${2:-.}"
-state="${1:-state.json}"
+repo="${FEEDHUB_REPO:-.}"
+state="${FEEDHUB_STATE:-state.json}"
 git -C "$repo" config user.name "github-actions[bot]"
 git -C "$repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 git -C "$repo" add "$state"
@@ -37,13 +39,10 @@ git -C "$repo" push
 [tasks.sync]
 description = "Poll or seed, then commit state (what CI runs)"
 run = '''
-feeds="${1:-feeds.json}"
-state="${2:-state.json}"
-repo="${3:-.}"
-if [ "${FEEDHUB_SEED_ONLY:-false}" = "true" ]; then
-  mise run seed -- "$feeds" "$state"
+if [ "${FEEDHUB_SEED_ONLY:-}" = "true" ]; then
+  mise run seed
 else
-  mise run poll -- "$feeds" "$state"
+  mise run poll
 fi
-mise run commit-state -- "$state" "$repo"
+mise run commit-state
 '''
