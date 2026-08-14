@@ -4,20 +4,20 @@ Generic **RSS → Discord** worker for GitHub Actions. No server, no database �
 
 ## What it is
 
-- One **reusable workflow** (`.github/workflows/rss.yml`) your consumer repo calls with `uses:`.
+- One **composite action** (`action.yml`) your consumer repo calls with `uses: echohello-dev/feedhub@<ref>`.
 - A Python worker (`src/rss.py`) that diffs an RSS feed against a committed `state.json` and posts new items to Discord webhooks.
 - Per-feed dedup via stable feed GUIDs. State is committed to your consumer repo, not this one.
 
 ## Use it
 
-This repo is a **GitHub Template Repository**. Hit "Use this template" to create your own consumer repo, then add this workflow call to it:
+This repo is a **GitHub Template Repository**. Hit "Use this template" to create your own consumer repo, then add this workflow to it:
 
 ```yaml
 # your-feeds/.github/workflows/rss.yml
 name: RSS → Discord
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 permissions:
@@ -25,27 +25,28 @@ permissions:
 
 jobs:
   poll:
-    uses: echohello-dev/feedhub/.github/workflows/rss.yml@main
-    with:
-      feeds-path: feeds.json
-      state-path: state.json
-    secrets:
-      discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
+    runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK_DEFAULT: ${{ secrets.DISCORD_WEBHOOK }}
+      DISCORD_WEBHOOK_FEED_A: ${{ secrets.DISCORD_WEBHOOK_FEED_A }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: echohello-dev/feedhub@main
+        with:
+          feeds-path: feeds.json
+          state-path: state.json
 ```
 
-Drop a `feeds.json` next to it (see [`examples/feeds.example.json`](examples/feeds.example.json)), set the `DISCORD_WEBHOOK` repo secret, push, done.
+Drop a `feeds.json` next to it (see [`examples/feeds.example.json`](examples/feeds.example.json)), set the matching repo secrets, push, done.
 
-For multiple webhooks, add one `secrets:` line per extra feed and one matching declaration to the reusable workflow's `workflow_call.secrets:` block:
+For multiple webhooks, add one job `env` line per feed. The env var name must match `webhook_secret` in `feeds.json` — no change to this repo is required when you add a feed.
 
 ```yaml
-# your-feeds/.github/workflows/rss.yml
-    secrets:
-      discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
+    env:
+      DISCORD_WEBHOOK_DEFAULT: ${{ secrets.DISCORD_WEBHOOK }}
       DISCORD_WEBHOOK_FEED_A: ${{ secrets.DISCORD_WEBHOOK_FEED_A }}
       DISCORD_WEBHOOK_FEED_B: ${{ secrets.DISCORD_WEBHOOK_FEED_B }}
 ```
-
-`feeds.json` then uses `"webhook_secret": "DISCORD_WEBHOOK_FEED_A"` and the per-feed URL is read from the matching env var. The reusable workflow must list each `DISCORD_WEBHOOK_*` secret it accepts — the secret name mirrors the env var name so no renaming is needed when you add a new feed.
 
 ## Why a template
 
@@ -55,7 +56,7 @@ The git-as-infra pattern ([Upptime](https://github.com/upptime/upptime), [starga
 |---|---|
 | `on: schedule` workflow | The poller (cron in consumer repo) |
 | Commits in the consumer repo | `state.json` — seen GUIDs, bounded history |
-| Reusable workflow (`workflow_call`) | The job definition, versioned by tag |
+| Composite action | The worker, versioned by tag |
 | The GitHub API | Implicit read interface for the state file |
 
 Total cost: **$0** for public consumer repos, free within Actions minutes for private repos at ≥ 15-min cadence.
@@ -96,7 +97,7 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
 }
 ```
 
-`webhook_secret` overrides the workflow-level `secrets.discord-webhook` if set, which lets one consumer repo post to multiple Discord channels with different webhooks.
+`webhook_secret` overrides `DISCORD_WEBHOOK_DEFAULT` if set, which lets one consumer repo post to multiple Discord channels with different webhooks.
 
 Discord webhooks rate-limit at roughly 30 messages per minute per webhook. If you replay a backlog or a feed occasionally bursts, set `post_delay_seconds` — at 2s the worker stays well under the limit. Failed posts are not marked seen, so 429s self-heal on the next run either way, just messier.
 
@@ -120,23 +121,27 @@ git push
 
 `FEEDHUB_SEED_ONLY` marks every current item as seen without posting. From the next run on, only genuinely new items hit your channel.
 
-The same env var works inside the reusable workflow — set it as a job `env` in your caller workflow if you'd rather seed in CI than locally.
+The same flag is an action input — set `seed-only: true` on the step if you'd rather seed in CI than locally.
 
-## Inputs the reusable workflow accepts
+## Inputs
 
 | Input | Default | Description |
 |---|---|---|
 | `feeds-path` | `feeds.json` | Path to feed config (relative to consumer repo root) |
 | `state-path` | `state.json` | Path to state file (relative to consumer repo root) |
+| `seed-only` | `false` | Mark current items seen without posting |
+| `python-version` | `3.12` | Python version for the worker |
 
-| Secret | Description |
+Webhook URLs are not action inputs. Set them as job `env` vars so adding a feed never requires a change here.
+
+| Env var | Description |
 |---|---|
-| `discord-webhook` | Fallback Discord webhook URL when a feed entry doesn't specify its own |
-| `DISCORD_WEBHOOK_<NAME>` | Per-feed webhook secret for feeds whose `webhook_secret` is `DISCORD_WEBHOOK_<NAME>`. Exposed as an env var of the same name. Add a matching `secrets:` entry to your caller workflow for each extra webhook you need. |
+| `DISCORD_WEBHOOK_DEFAULT` | Fallback webhook URL when a feed entry doesn't specify its own |
+| `<webhook_secret>` | Per-feed webhook URL. Name must match `webhook_secret` in `feeds.json`. |
 
 ## Pin to a SHA in production
 
-`uses: echohello-dev/feedhub/.github/workflows/rss.yml@main` is fine for tinkering. For anything that matters, pin to a tag or commit SHA so updates are deliberate, not surprising.
+`uses: echohello-dev/feedhub@main` is fine for tinkering. For anything that matters, pin to a tag or commit SHA so updates are deliberate, not surprising.
 
 ## Examples
 

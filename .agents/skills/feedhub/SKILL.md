@@ -1,6 +1,6 @@
 ---
 name: feedhub
-description: Use when working on echohello-dev/feedhub or echohello-dev/feeds — the git-as-infra RSS→Discord pipeline. Covers editing the worker or reusable workflow, adding/removing feeds, seeding or replaying feed state, debugging scheduled runs, changing Discord embed formatting, or managing the repos' org-level settings.
+description: Use when working on echohello-dev/feedhub or echohello-dev/feeds — the git-as-infra RSS→Discord pipeline. Covers editing the worker or composite action, adding/removing feeds, seeding or replaying feed state, debugging scheduled runs, changing Discord embed formatting, or managing the repos' org-level settings.
 ---
 
 # feedhub / feeds
@@ -11,12 +11,12 @@ RSS → Discord on git-as-infra: Actions cron is the scheduler, `state.json` com
 
 | Repo | Visibility | Role | Local path |
 |---|---|---|---|
-| `echohello-dev/feedhub` | public, Template Repo | reusable workflow (`workflow_call`) + `src/rss.py` worker | `~/projects/github.com/echohello-dev/feedhub` |
+| `echohello-dev/feedhub` | public, Template Repo | composite action (`action.yml`) + `src/rss.py` worker | `~/projects/github.com/echohello-dev/feedhub` |
 | `echohello-dev/feeds` | public | consumer: `feeds.json` + `state.json` + thin caller workflow | `~/projects/github.com/echohello-dev/feeds` |
 
 Both MIT, both have secret scanning + push protection enabled. State commits are authored by `github-actions[bot]` (feeds history was rewritten to a single bot identity).
 
-**Path resolution quirk:** a `workflow_call` workflow runs against the *consumer* checkout, so the reusable workflow re-checks-out feedhub into `./vendor/feedhub/`. Any path change must respect that layout.
+Webhook URLs are job `env` on the consumer workflow, named to match `webhook_secret`. Adding a feed never requires a feedhub change.
 
 ## Change workflow
 
@@ -24,7 +24,7 @@ Both MIT, both have secret scanning + push protection enabled. State commits are
 
 ```
 git checkout -b <branch>; git add -A
-git commit -m "..."   # include Co-authored-by: opencode-agent <noreply@opencode.ai>
+git commit -m "..."   # include Co-authored-by: opencode-agent[bot] <219766164+opencode-agent[bot]@users.noreply.github.com>
 git push -u origin <branch>
 gh pr create --repo echohello-dev/feedhub --base main --title "..." --body "..."
 gh pr merge <num> --repo echohello-dev/feedhub --admin --squash --delete-branch
@@ -33,7 +33,7 @@ gh pr merge <num> --repo echohello-dev/feedhub --admin --squash --delete-branch
 - Auto-merge gets `BLOCKED` by the org ruleset even when all checks pass — use `--admin`.
 - `gh pr merge <num>` lies about numbers: it caches stale PR data. Use the PR URL/number returned by `gh pr create`, never guess.
 
-**feeds** — direct commits to main are fine (the cron bot churns `state.json` every 15 min, PRs are pointless). Always `git pull --rebase` immediately before pushing; the bot will reject naive pushes mid-race.
+**feeds** — direct commits to main are fine (the cron bot churns `state.json` on each run, PRs are pointless). Always `git pull --rebase` immediately before pushing; the bot will reject naive pushes mid-race.
 
 **Org settings** — visibility/description/topics/labels/merge rules are managed by `echohello-dev/admin` via safe-settings: edit `.github/repos/<repo>.yml` there and PR it, or safe-settings reverts manual flips on its next sync. Org default is private — public repos must declare `visibility: public`. `is_template` is NOT in safe-settings' scope (API only, applied by `ensure-repos.ts` on creation). Secret scanning was enabled via API directly.
 
@@ -43,7 +43,8 @@ gh pr merge <num> --repo echohello-dev/feedhub --admin --squash --delete-branch
 
 1. Append an entry to `feeds.json` (full schema in feedhub's README).
 2. `gh secret set DISCORD_WEBHOOK_<NAME> --repo echohello-dev/feeds`
-3. Seed before the first real post (below) or the backlog floods the channel.
+3. Add a matching job `env` line in `.github/workflows/rss.yml`.
+4. Seed before the first real post (below) or the backlog floods the channel.
 
 ### Seed a feed (suppress first-run flood)
 
