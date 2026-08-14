@@ -4,7 +4,7 @@ feedhub is a GitHub Template Repository and composite action. Per-consumer state
 
 ## Layout
 
-- `action.yml` — composite action: setup Python, run worker, commit state
+- `action.yml` — composite action: mise + uv, run worker, commit state
 - `src/rss.py` — worker
 - `src/requirements.txt` — Python deps
 - `examples/feeds.example.json` — consumer config schema
