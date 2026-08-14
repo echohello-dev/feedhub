@@ -112,16 +112,17 @@ When the worker first runs against a feed, every item in the feed's `max_items` 
 Seed the state before enabling posts:
 
 ```bash
-# In your consumer repo, with feedhub checked out alongside:
-FEEDHUB_SEED_ONLY=true uv run --with-requirements ../feedhub/src/requirements.txt --no-project \
-  python ../feedhub/src/rss.py feeds.json state.json
-git commit -am "chore: seed feed state"
-git push
+# From this repo, pointing at the consumer:
+mise run seed -- ../feeds/feeds.json ../feeds/state.json
+# Or from the consumer, if it has a mise.toml wrapper:
+mise run seed
 ```
 
-`FEEDHUB_SEED_ONLY` marks every current item as seen without posting. From the next run on, only genuinely new items hit your channel.
+`mise run seed` marks every current item as seen without posting. From the next run on, only genuinely new items hit your channel.
 
 The same flag is an action input — set `seed-only: true` on the step if you'd rather seed in CI than locally.
+
+All commands go through mise. Run `mise tasks` to list them (`poll`, `seed`, `sync`, `deps`, `commit-state`).
 
 ## Inputs
 
@@ -130,7 +131,6 @@ The same flag is an action input — set `seed-only: true` on the step if you'd 
 | `feeds-path` | `feeds.json` | Path to feed config (relative to consumer repo root) |
 | `state-path` | `state.json` | Path to state file (relative to consumer repo root) |
 | `seed-only` | `false` | Mark current items seen without posting |
-| `python-version` | `3.12` | Python version for the worker |
 
 Webhook URLs are not action inputs. Set them as job `env` vars so adding a feed never requires a change here.
 

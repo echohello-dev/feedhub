@@ -50,19 +50,19 @@ gh pr merge <num> --repo echohello-dev/feedhub --admin --squash --delete-branch
 
 ```bash
 cd ~/projects/github.com/echohello-dev/feeds
-FEEDHUB_SEED_ONLY=true uv run --with-requirements ../feedhub/src/requirements.txt --no-project \
-  python ../feedhub/src/rss.py feeds.json state.json
+mise run seed
 git add state.json && git commit -m "chore: seed <feed> state" && git pull --rebase && git push
 ```
 
 ### Replay items (re-post to Discord)
 
-Fetch the feed, remove the target GUIDs from `state.json`'s `seen` list, commit, push, `gh workflow run rss.yml --repo echohello-dev/feeds`. This is the standard demo/verification move.
+Fetch the feed, remove the target GUIDs from `state.json`'s `seen` list, commit, push, `mise run trigger`. This is the standard demo/verification move.
 
 ### Debug a failing run
 
 ```bash
-gh run list --repo echohello-dev/feeds --limit 5
+cd ~/projects/github.com/echohello-dev/feeds
+mise run runs
 gh run view --repo echohello-dev/feeds <run-id> --log | grep -E "OpenRouter|Posted|post failed"
 ```
 
