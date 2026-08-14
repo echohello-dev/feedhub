@@ -1,0 +1,49 @@
+[tools]
+python = "3.12"
+uv = "latest"
+
+[tasks.default]
+description = "List available tasks"
+alias = "h"
+run = ["mise tasks"]
+
+[tasks.deps]
+description = "Install Python deps with uv"
+run = "uv pip install --system -r src/requirements.txt"
+
+[tasks.poll]
+description = "Poll feeds and post new items"
+depends = ["deps"]
+run = 'python src/rss.py "${1:-feeds.json}" "${2:-state.json}"'
+
+[tasks.seed]
+description = "Mark current items seen without posting"
+depends = ["deps"]
+env = { FEEDHUB_SEED_ONLY = "true" }
+run = 'python src/rss.py "${1:-feeds.json}" "${2:-state.json}"'
+
+[tasks.commit-state]
+description = "Commit and push state.json if it changed"
+run = '''
+repo="${2:-.}"
+state="${1:-state.json}"
+git -C "$repo" config user.name "github-actions[bot]"
+git -C "$repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+git -C "$repo" add "$state"
+git -C "$repo" diff --cached --quiet || git -C "$repo" commit -m "chore(feedhub): update RSS state"
+git -C "$repo" push
+'''
+
+[tasks.sync]
+description = "Poll or seed, then commit state (what CI runs)"
+run = '''
+feeds="${1:-feeds.json}"
+state="${2:-state.json}"
+repo="${3:-.}"
+if [ "${FEEDHUB_SEED_ONLY:-false}" = "true" ]; then
+  mise run seed -- "$feeds" "$state"
+else
+  mise run poll -- "$feeds" "$state"
+fi
+mise run commit-state -- "$state" "$repo"
+'''

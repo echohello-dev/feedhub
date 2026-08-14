@@ -4,7 +4,8 @@ feedhub is a GitHub Template Repository and composite action. Per-consumer state
 
 ## Layout
 
-- `action.yml` — composite action: mise + uv, run worker, commit state
+- `action.yml` — composite action: mise-action, then `mise run sync`
+- `mise.toml` — tools and tasks; the interface for CI and local commands
 - `src/rss.py` — worker
 - `src/requirements.txt` — Python deps
 - `examples/feeds.example.json` — consumer config schema
@@ -17,6 +18,7 @@ Pin consumers to a tag or commit SHA.
 
 ## Coding standards
 
+- Run commands via `mise run`, not raw python/uv/git. See `mise.toml`.
 - Python: PEP 8, type hints, stdlib only + `feedparser` + `requests`.
 - Pin third-party Actions to full SHA-1 hashes.
 - Secrets never logged. State files are public-readable on public consumer repos — no PII.
