@@ -5,16 +5,16 @@ Reads feeds.json, diffs against state.json, posts new items to Discord webhooks.
 Designed to run inside a GitHub Actions job. Stateful dedup via committed state.
 
 Usage:
-    python rss.py <feeds.json> <state.json>
+    python rss.py [feeds.json] [state.json]
 
 Environment:
-    DISCORD_WEBHOOK_DEFAULT  Optional fallback webhook URL when a feed entry
-                             doesn't specify its own. Set as a job env var
-                             from a repo secret.
+    FEEDHUB_FEEDS            Path to feeds.json (default feeds.json). Wins over argv.
+    FEEDHUB_STATE            Path to state.json (default state.json). Wins over argv.
     FEEDHUB_SEED_ONLY        When set to a truthy value (1/true/yes), skip
                              posting entirely and only mark feed items as seen.
-                             Use for first-run seeding to avoid flooding
-                             Discord with the feed's existing backlog.
+    DISCORD_WEBHOOK_DEFAULT  Optional fallback webhook URL when a feed entry
+                             doesn't specify its own. Set as a job env var
+                             from a repo secret. Never logged.
 """
 from __future__ import annotations
 
@@ -327,7 +327,10 @@ def main(feeds_path: str, state_path: str) -> int:
                     )
                     continue
                 except requests.RequestException as e:
-                    print(f"[{name}] post failed for {gid}: {e}", file=sys.stderr)
+                    print(
+                        f"[{name}] post failed for {gid}: {type(e).__name__}",
+                        file=sys.stderr,
+                    )
                     continue
             feed_seen.add(gid)
             new += 1
@@ -347,5 +350,11 @@ def main(feeds_path: str, state_path: str) -> int:
     return 0
 
 
+def paths() -> tuple[str, str]:
+    feeds = os.environ.get("FEEDHUB_FEEDS") or (sys.argv[1] if len(sys.argv) > 1 else "feeds.json")
+    state = os.environ.get("FEEDHUB_STATE") or (sys.argv[2] if len(sys.argv) > 2 else "state.json")
+    return feeds, state
+
+
 if __name__ == "__main__":
-    sys.exit(main(*sys.argv[1:3]))
+    sys.exit(main(*paths()))

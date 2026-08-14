@@ -21,4 +21,5 @@ Pin consumers to a tag or commit SHA.
 - Run commands via `mise run`, not raw python/uv/git. See `mise.toml`.
 - Python: PEP 8, type hints, stdlib only + `feedparser` + `requests`.
 - Pin third-party Actions to full SHA-1 hashes.
-- Secrets never logged. State files are public-readable on public consumer repos — no PII.
+- Paths and seed mode via `FEEDHUB_*` env vars, not mise CLI args.
+- Secrets never logged (webhook URLs stay in env; do not echo or pass as flags). State files are public-readable on public consumer repos — no PII.
