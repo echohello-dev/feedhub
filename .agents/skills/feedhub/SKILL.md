@@ -24,7 +24,7 @@ Webhook URLs are job `env` on the consumer workflow, named to match `webhook_sec
 
 ```
 git checkout -b <branch>; git add -A
-git commit -m "..."   # include Co-authored-by: opencode-agent[bot] <219766164+opencode-agent[bot]@users.noreply.github.com>
+git commit -m "..."
 git push -u origin <branch>
 gh pr create --repo echohello-dev/feedhub --base main --title "..." --body "..."
 gh pr merge <num> --repo echohello-dev/feedhub --admin --squash --delete-branch
@@ -50,10 +50,8 @@ gh pr merge <num> --repo echohello-dev/feedhub --admin --squash --delete-branch
 
 ```bash
 cd ~/projects/github.com/echohello-dev/feeds
-python3 -m venv .venv-seed
-.venv-seed/bin/pip install -q -r ../feedhub/src/requirements.txt
-FEEDHUB_SEED_ONLY=true .venv-seed/bin/python ../feedhub/src/rss.py feeds.json state.json
-rm -rf .venv-seed
+FEEDHUB_SEED_ONLY=true uv run --with-requirements ../feedhub/src/requirements.txt --no-project \
+  python ../feedhub/src/rss.py feeds.json state.json
 git add state.json && git commit -m "chore: seed <feed> state" && git pull --rebase && git push
 ```
 

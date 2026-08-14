@@ -30,7 +30,7 @@ jobs:
       DISCORD_WEBHOOK_DEFAULT: ${{ secrets.DISCORD_WEBHOOK }}
       DISCORD_WEBHOOK_FEED_A: ${{ secrets.DISCORD_WEBHOOK_FEED_A }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: echohello-dev/feedhub@main
         with:
           feeds-path: feeds.json
@@ -113,8 +113,8 @@ Seed the state before enabling posts:
 
 ```bash
 # In your consumer repo, with feedhub checked out alongside:
-pip install -r ../feedhub/src/requirements.txt
-FEEDHUB_SEED_ONLY=true python ../feedhub/src/rss.py feeds.json state.json
+FEEDHUB_SEED_ONLY=true uv run --with-requirements ../feedhub/src/requirements.txt --no-project \
+  python ../feedhub/src/rss.py feeds.json state.json
 git commit -am "chore: seed feed state"
 git push
 ```
