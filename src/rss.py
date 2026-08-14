@@ -9,8 +9,8 @@ Usage:
 
 Environment:
     DISCORD_WEBHOOK_DEFAULT  Optional fallback webhook URL when a feed entry
-                             doesn't specify its own. Usually injected from
-                             secrets.discord-webhook in the workflow.
+                             doesn't specify its own. Set as a job env var
+                             from a repo secret.
     FEEDHUB_SEED_ONLY        When set to a truthy value (1/true/yes), skip
                              posting entirely and only mark feed items as seen.
                              Use for first-run seeding to avoid flooding
@@ -186,7 +186,7 @@ def guid(entry: Any) -> str:
 
 
 def webhook_for(feed_cfg: dict[str, Any], default: str) -> str:
-    """Resolve webhook URL: per-feed env var > workflow-level default."""
+    """Resolve webhook URL: per-feed env var > DISCORD_WEBHOOK_DEFAULT."""
     secret = feed_cfg.get("webhook_secret")
     if secret and secret in os.environ:
         return os.environ[secret]
@@ -194,7 +194,7 @@ def webhook_for(feed_cfg: dict[str, Any], default: str) -> str:
         return default
     raise RuntimeError(
         f"No webhook configured for feed '{feed_cfg.get('name', '<unnamed>')}'. "
-        "Set a webhook_secret in feeds.json or pass secrets.discord-webhook."
+        "Set a webhook_secret in feeds.json or DISCORD_WEBHOOK_DEFAULT."
     )
 
 

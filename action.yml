@@ -1,0 +1,53 @@
+name: feedhub
+description: Poll RSS feeds and post new items to Discord
+author: echohello-dev
+branding:
+  icon: rss
+  color: orange
+
+inputs:
+  feeds-path:
+    description: Path to feeds.json relative to the consumer repo root
+    required: false
+    default: feeds.json
+  state-path:
+    description: Path to state.json relative to the consumer repo root
+    required: false
+    default: state.json
+  seed-only:
+    description: Mark current items as seen without posting
+    required: false
+    default: "false"
+  python-version:
+    description: Python version for the worker
+    required: false
+    default: "3.12"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: ${{ github.action_path }}/src/requirements.txt
+
+    - name: Install dependencies
+      shell: bash
+      run: pip install -r "${{ github.action_path }}/src/requirements.txt"
+
+    - name: Poll feeds and post new items
+      shell: bash
+      env:
+        FEEDHUB_SEED_ONLY: ${{ inputs.seed-only }}
+      run: python "${{ github.action_path }}/src/rss.py" "${{ inputs.feeds-path }}" "${{ inputs.state-path }}"
+
+    - name: Commit updated state
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add "${{ inputs.state-path }}"
+        git diff --cached --quiet || git commit -m "chore(feedhub): update RSS state"
+        git push
