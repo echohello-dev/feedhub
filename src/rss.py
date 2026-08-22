@@ -158,6 +158,20 @@ def entry_fields(entry: Any, feed_cfg: dict[str, Any]) -> list[dict[str, Any]]:
                     "inline": True,
                 }
             )
+    # Free-form fields (e.g. masked markdown links, which Discord renders in
+    # field values). Placeholders: {link}, {title}.
+    for extra in feed_cfg.get("extra_fields", []):
+        value = str(extra.get("value") or "")
+        value = value.replace("{link}", entry.get("link") or "")
+        value = value.replace("{title}", entry.get("title") or "")
+        if value.strip():
+            fields.append(
+                {
+                    "name": str(extra.get("name") or "Link")[:256],
+                    "value": value[:1024],
+                    "inline": bool(extra.get("inline", False)),
+                }
+            )
     return fields[:25]
 
 

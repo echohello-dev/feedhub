@@ -92,6 +92,11 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
   "thumbnail_from_entry": true,                 // optional, default true: auto-extract media:thumbnail /
                                                 //   media:content / image enclosure / first <img>
   "fields": ["author", "published", "tags"],    // entry keys rendered as inline fields
+  "extra_fields": [                             // free-form fields; markdown ok in value,
+    {"name": "Read more",                       //   {link} and {title} substitute per entry
+     "value": "[Full post →]({link})",
+     "inline": false}                           //   (default false: full-width row)
+  ],
   "content": "New model just landed:",          // message text above the embed (2000 char cap, markdown ok)
   "allow_role_pings": false                     // optional, default false: let <@&role_id> in content actually ping
 }
