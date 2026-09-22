@@ -105,15 +105,20 @@ YOUTUBE_ID_RE = re.compile(
     r"([A-Za-z0-9_-]{11})"
 )
 
+YOUTUBE_BARE_ID_RE = re.compile(r"[A-Za-z0-9_-]{11}")
+
 
 def entry_thumbnail(entry: Any, feed_cfg: dict[str, Any]) -> str | None:
     """Resolve a thumbnail for the embed.
 
     Extraction order: media:thumbnail -> media:content image -> image
     enclosure -> first <img> in the description -> YouTube ID in the
-    description (when youtube_thumbnail: true) -> per-feed static
-    fallback. The YouTube step sits after the inline <img> check so an
-    explicit hero image still wins over a footer video link.
+    description (when youtube_thumbnail: true) -> per-feed YouTube
+    fallback (when youtube_fallback is set) -> per-feed static fallback.
+    The YouTube description step sits after the inline <img> check so an
+    explicit hero image still wins over a footer video link. The fallback
+    is independent of youtube_thumbnail and fires whenever nothing else
+    produced a thumbnail.
     """
     if feed_cfg.get("thumbnail_from_entry", True):
         thumbs = entry.get("media_thumbnail")
@@ -134,6 +139,13 @@ def entry_thumbnail(entry: Any, feed_cfg: dict[str, Any]) -> str | None:
             yt = YOUTUBE_ID_RE.search(html_text)
             if yt:
                 return f"https://i.ytimg.com/vi/{yt.group(1)}/hqdefault.jpg"
+    fallback = feed_cfg.get("youtube_fallback")
+    if fallback:
+        yt = YOUTUBE_ID_RE.search(fallback)
+        if yt:
+            return f"https://i.ytimg.com/vi/{yt.group(1)}/hqdefault.jpg"
+        if YOUTUBE_BARE_ID_RE.fullmatch(fallback):
+            return f"https://i.ytimg.com/vi/{fallback}/hqdefault.jpg"
     return feed_cfg.get("thumbnail_url")
 
 

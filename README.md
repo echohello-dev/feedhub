@@ -95,6 +95,11 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
                                                 //   a YouTube watch/embed/v/shorts/youtu.be URL, use the
                                                 //   matching i.ytimg.com thumbnail. Sits after the inline
                                                 //   <img> check so an explicit hero image still wins.
+  "youtube_fallback": "55YRTIKuExs",            // optional: 11-char YouTube video ID or full YouTube URL
+                                                //   (any of watch?v=, embed/, v/, shorts/, youtu.be/).
+                                                //   Independent of youtube_thumbnail; used whenever nothing
+                                                //   else produced a thumbnail (e.g. give a video-less feed a
+                                                //   constant "channel poster" thumbnail).
   "fields": ["author", "published", "tags"],    // entry keys rendered as inline fields
   "extra_fields": [                             // free-form fields; markdown ok in value,
     {"name": "Read more",                       //   {link} and {title} substitute per entry
