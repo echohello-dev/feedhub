@@ -91,6 +91,10 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
   "thumbnail_url": "https://...logo",           // static thumbnail (fallback when entry has no media)
   "thumbnail_from_entry": true,                 // optional, default true: auto-extract media:thumbnail /
                                                 //   media:content / image enclosure / first <img>
+  "youtube_thumbnail": false,                   // optional, default false: if the description HTML contains
+                                                //   a YouTube watch/embed/v/shorts/youtu.be URL, use the
+                                                //   matching i.ytimg.com thumbnail. Sits after the inline
+                                                //   <img> check so an explicit hero image still wins.
   "fields": ["author", "published", "tags"],    // entry keys rendered as inline fields
   "extra_fields": [                             // free-form fields; markdown ok in value,
     {"name": "Read more",                       //   {link} and {title} substitute per entry

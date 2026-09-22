@@ -100,11 +100,20 @@ def html_to_discord(text: str) -> str:
     return out.strip()
 
 
+YOUTUBE_ID_RE = re.compile(
+    r"(?:youtube\.com/(?:watch\?v=|embed/|v/|shorts/)|youtu\.be/)"
+    r"([A-Za-z0-9_-]{11})"
+)
+
+
 def entry_thumbnail(entry: Any, feed_cfg: dict[str, Any]) -> str | None:
     """Resolve a thumbnail for the embed.
 
     Extraction order: media:thumbnail -> media:content image -> image
-    enclosure -> first <img> in the description -> per-feed static fallback.
+    enclosure -> first <img> in the description -> YouTube ID in the
+    description (when youtube_thumbnail: true) -> per-feed static
+    fallback. The YouTube step sits after the inline <img> check so an
+    explicit hero image still wins over a footer video link.
     """
     if feed_cfg.get("thumbnail_from_entry", True):
         thumbs = entry.get("media_thumbnail")
@@ -117,10 +126,14 @@ def entry_thumbnail(entry: Any, feed_cfg: dict[str, Any]) -> str | None:
         for enc in entry.get("enclosures") or []:
             if enc.get("type", "").startswith("image/") and enc.get("href"):
                 return enc["href"]
-        html_text = (entry.get("description") or entry.get("summary") or "")
+        html_text = entry.get("description") or entry.get("summary") or ""
         match = re.search(r'<img[^>]+src=["\']([^"\']+)', html_text)
         if match:
             return match.group(1)
+        if feed_cfg.get("youtube_thumbnail"):
+            yt = YOUTUBE_ID_RE.search(html_text)
+            if yt:
+                return f"https://i.ytimg.com/vi/{yt.group(1)}/hqdefault.jpg"
     return feed_cfg.get("thumbnail_url")
 
 
