@@ -16,6 +16,14 @@
     "footer_icon_url": "https://openrouter.ai/favicon.ico",
     "fields": ["published"]
     // "oldest_first": true — uncomment to replay/backfill a feed oldest-first
+    // "youtube_thumbnail": true — uncomment to extract YouTube IDs from
+    //   description HTML and use i.ytimg.com thumbnails (only useful for
+    //   feeds that link YouTube videos inside their RSS description)
+    // "youtube_fallback": "55YRTIKuExs" — video ID or full URL used when
+    //   nothing else produced a thumbnail (independent of youtube_thumbnail)
+    // "fetch_og_image": true — fetch entry.link and use its
+    //   <meta property="og:image"> when no inline thumbnail was found
+    //   (5s timeout, one fetch per entry; opt-in to avoid unintended load)
   },
   {
     "name": "GitHub Releases - some/repo",

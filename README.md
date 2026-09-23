@@ -91,6 +91,21 @@ Total cost: **$0** for public consumer repos, free within Actions minutes for pr
   "thumbnail_url": "https://...logo",           // static thumbnail (fallback when entry has no media)
   "thumbnail_from_entry": true,                 // optional, default true: auto-extract media:thumbnail /
                                                 //   media:content / image enclosure / first <img>
+  "youtube_thumbnail": false,                   // optional, default false: if the description HTML contains
+                                                //   a YouTube watch/embed/v/shorts/youtu.be URL, use the
+                                                //   matching i.ytimg.com thumbnail. Sits after the inline
+                                                //   <img> check so an explicit hero image still wins.
+  "fetch_og_image": false,                     // optional, default false: if no inline thumbnail was
+                                                //   found, fetch entry.link and use its <meta
+                                                //   property="og:image">. 5s timeout, 512KB body cap,
+                                                //   relative URLs resolved against the article URL.
+                                                //   Sits after the inline <img> check and before the
+                                                //   YouTube flags. One HTTP fetch per entry.
+  "youtube_fallback": "55YRTIKuExs",            // optional: 11-char YouTube video ID or full YouTube URL
+                                                //   (any of watch?v=, embed/, v/, shorts/, youtu.be/).
+                                                //   Independent of youtube_thumbnail; used whenever nothing
+                                                //   else produced a thumbnail (e.g. give a video-less feed a
+                                                //   constant "channel poster" thumbnail).
   "fields": ["author", "published", "tags"],    // entry keys rendered as inline fields
   "extra_fields": [                             // free-form fields; markdown ok in value,
     {"name": "Read more",                       //   {link} and {title} substitute per entry
