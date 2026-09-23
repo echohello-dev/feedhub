@@ -27,6 +27,7 @@ import sys
 import time
 from html.parser import HTMLParser
 from typing import Any
+from urllib.parse import urljoin
 
 import feedparser
 import requests
@@ -107,18 +108,60 @@ YOUTUBE_ID_RE = re.compile(
 
 YOUTUBE_BARE_ID_RE = re.compile(r"[A-Za-z0-9_-]{11}")
 
+# <meta property="og:image" content="..."> with attributes in either order.
+OG_IMAGE_RE = re.compile(
+    r"""<meta\s+(?:[^>]*?\s)?(?:property|name)=["']og:image["']"""
+    r"""[^>]*?content=["']([^"']+)["']"""
+    r"""|"""
+    r"""<meta\s+(?:[^>]*?\s)?content=["']([^"']+)["']"""
+    r"""[^>]*?(?:property|name)=["']og:image["']""",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _og_image_for(url: str, timeout: float = 5.0, max_bytes: int = 512 * 1024) -> str | None:
+    """Fetch an article URL and extract its <meta property="og:image"> URL.
+
+    Returns None on any failure (timeout, non-2xx, no og:image, body too big).
+    Relative og:image URLs are resolved against the article URL.
+    """
+    try:
+        resp = requests.get(url, timeout=timeout, stream=True)
+    except requests.RequestException:
+        return None
+    if not (200 <= resp.status_code < 300):
+        resp.close()
+        return None
+    try:
+        buf = bytearray()
+        for chunk in resp.iter_content(chunk_size=16384):
+            if not chunk:
+                continue
+            buf.extend(chunk)
+            if len(buf) >= max_bytes:
+                break
+    finally:
+        resp.close()
+    html = buf.decode(resp.encoding or "utf-8", errors="replace")
+    m = OG_IMAGE_RE.search(html)
+    if not m:
+        return None
+    src = m.group(1) or m.group(2)
+    return urljoin(url, src) if src else None
+
 
 def entry_thumbnail(entry: Any, feed_cfg: dict[str, Any]) -> str | None:
     """Resolve a thumbnail for the embed.
 
     Extraction order: media:thumbnail -> media:content image -> image
-    enclosure -> first <img> in the description -> YouTube ID in the
-    description (when youtube_thumbnail: true) -> per-feed YouTube
-    fallback (when youtube_fallback is set) -> per-feed static fallback.
-    The YouTube description step sits after the inline <img> check so an
-    explicit hero image still wins over a footer video link. The fallback
-    is independent of youtube_thumbnail and fires whenever nothing else
-    produced a thumbnail.
+    enclosure -> first <img> in the description -> OpenGraph image
+    fetched from entry.link (when fetch_og_image: true) -> YouTube ID
+    in the description (when youtube_thumbnail: true) -> per-feed
+    YouTube fallback (when youtube_fallback is set) -> per-feed static
+    fallback. The OG fetch sits after the inline <img> check so RSS-
+    embedded images still win, and before the YouTube steps so the
+    YouTube-specific flags don't accidentally trigger when the article
+    already has a real hero image.
     """
     if feed_cfg.get("thumbnail_from_entry", True):
         thumbs = entry.get("media_thumbnail")
@@ -135,6 +178,10 @@ def entry_thumbnail(entry: Any, feed_cfg: dict[str, Any]) -> str | None:
         match = re.search(r'<img[^>]+src=["\']([^"\']+)', html_text)
         if match:
             return match.group(1)
+        if feed_cfg.get("fetch_og_image") and entry.get("link"):
+            og = _og_image_for(entry["link"])
+            if og:
+                return og
         if feed_cfg.get("youtube_thumbnail"):
             yt = YOUTUBE_ID_RE.search(html_text)
             if yt:

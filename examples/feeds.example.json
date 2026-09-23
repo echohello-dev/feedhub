@@ -21,6 +21,9 @@
     //   feeds that link YouTube videos inside their RSS description)
     // "youtube_fallback": "55YRTIKuExs" — video ID or full URL used when
     //   nothing else produced a thumbnail (independent of youtube_thumbnail)
+    // "fetch_og_image": true — fetch entry.link and use its
+    //   <meta property="og:image"> when no inline thumbnail was found
+    //   (5s timeout, one fetch per entry; opt-in to avoid unintended load)
   },
   {
     "name": "GitHub Releases - some/repo",
